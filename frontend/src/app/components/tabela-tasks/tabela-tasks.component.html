@@ -1,0 +1,21 @@
+<div class="border rounded shadow">
+  <h2 class="bg-gray-200 p-2 font-semibold">Tarefas</h2>
+  <table class="w-full table-auto">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="p-2 text-left">Nome</th>
+        <th class="p-2 text-left">Prioridade</th>
+        <th class="p-2 text-left">Tempo</th>
+        <th class="p-2 text-left">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let t of tasks" class="border-t">
+        <td class="p-2">{{ t.name }}</td>
+        <td class="p-2">{{ t.priority }}</td>
+        <td class="p-2">{{ t.hours }}h</td>
+        <td class="p-2">{{ t.status }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

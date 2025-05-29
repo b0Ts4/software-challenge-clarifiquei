@@ -1,0 +1,13 @@
+<div class="w-full bg-gray-200 rounded h-4">
+  <div
+    class="bg-green-500 h-4 rounded"
+    [style.width.%]="percentual"
+    [ngClass]="{
+      'bg-red-500': percentual >= 100,
+      'bg-yellow-500': percentual >= 80 && percentual < 100
+    }"
+  ></div>
+</div>
+<p class="text-xs text-gray-600 mt-1">
+  {{ usado.toFixed(1) }}h / {{ total }}h ({{ percentual | number:'1.0-0' }}%)
+</p>

@@ -1,6 +1,6 @@
 # software-challenge-clarifiquei
 
-## 🗂️ Configuração das variáveis de ambiente
+## Configuração das variáveis de ambiente
 
 ### Backend - `.env`
 
@@ -28,7 +28,7 @@ REACT_APP_API_URL=http://localhost:3200
 
 ---
 
-## 🛠️ Como rodar o banco
+## Como rodar o banco
 
 O script de criação do banco já está no repositório.
 

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
-import { Task } from 'src/models/task.model';
+import { Task, UpdateTaskDto } from 'src/models/task.model';
 
 @Injectable()
 export class TasksService {
@@ -28,12 +28,27 @@ export class TasksService {
     return rows[0];
   }
 
-  async update(id: number, task: Task): Promise<Task | null> {
-    const { name, priority, hours, engineer_id, started_at, status } = task;
-    const { rows } = await this.pool.query(
-      'UPDATE tasks SET name = $1, priority = $2, hours = $3, engineer_id = $4, started_at = $5, status = $6 WHERE id = $7 RETURNING *',
-      [name, priority, hours, engineer_id, started_at, status, id],
-    );
+  async update(id: number, task: UpdateTaskDto): Promise<Task | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let index = 1;
+
+    for (const [key, value] of Object.entries(task)) {
+      fields.push(`${key} = $${index}`);
+      values.push(value);
+      index++;
+    }
+
+    values.push(id); // o último é sempre o id
+
+    const query = `
+    UPDATE tasks
+    SET ${fields.join(', ')}
+    WHERE id = $${index}
+    RETURNING *;
+  `;
+
+    const { rows } = await this.pool.query(query, values);
     return rows[0] || null;
   }
 
@@ -42,39 +57,53 @@ export class TasksService {
   }
 
   async alocarTasks(): Promise<void> {
-    const { rows: engineers } = await this.pool.query(`
-      SELECT * FROM engineers
-      WHERE id NOT IN (
-        SELECT engineer_id
-        FROM tasks
-        WHERE status IN ('Pendente', 'Em andamento')
-      )
+    const { rows: allEngineers } = await this.pool.query(`
+      SELECT e.*
+      FROM engineers e
+      WHERE NOT EXISTS (
+        SELECT *
+        FROM tasks t
+        WHERE t.engineer_id = e.id
+          AND t.status IN ('Pendente', 'Em Andamento')
+      );
+   
     `);
+
+    const engineers = [...allEngineers];
+
+    engineers.sort((a, b) => b.max_hours - a.max_hours);
 
     if (engineers.length === 0) return;
 
-    const { rows: tasks } = await this.pool.query(`
+    const { rows: tasks }: { rows: Task[] } = await this.pool.query(`
       SELECT * FROM tasks
       WHERE engineer_id IS NULL
-      ORDER BY
-        CASE priority
-          WHEN 'Alta' THEN 1
-          WHEN 'Média' THEN 2
-          WHEN 'Baixa' THEN 3
-        END
     `);
 
+    const prioridadePeso = (p: string) =>
+      p === 'Alta' ? 1 : p === 'Média' || p === 'Media' ? 2 : 3;
+
+    tasks.sort((a, b) => {
+      const prioridadeDiff =
+        prioridadePeso(a.priority) - prioridadePeso(b.priority);
+      if (prioridadeDiff !== 0) return prioridadeDiff;
+      return b.hours - a.hours;
+    });
+
     for (const task of tasks) {
-      for (const engineer of engineers) {
+      for (let i = 0; i < engineers.length; i++) {
+        const engineer = engineers[i];
         const cargaAtual = await this.getLoadEngineer(engineer.id);
 
-        const tempoComEficiência = task.tempo / (1 + engineer.eficiency);
+        const tempoComEficiência = task.hours / (1 + engineer.eficiency);
 
         if (cargaAtual + tempoComEficiência <= engineer.max_hours) {
-          await this.pool.query(
-            `UPDATE tasks SET engineer_id = $1 WHERE id = $2`,
+          const { rows } = await this.pool.query(
+            `UPDATE tasks SET engineer_id = $1 WHERE id = $2 RETURNING *`,
             [engineer.id, task.id],
           );
+          console.log(`rows::: `, rows);
+          engineers.splice(i, 1);
           break;
         }
       }
@@ -84,10 +113,10 @@ export class TasksService {
   private async getLoadEngineer(engineerId: number): Promise<number> {
     const { rows } = await this.pool.query(
       `
-      SELECT COALESCE(SUM(tempo / (1 + e.eficiency)), 0) AS load
+      SELECT COALESCE(SUM(hours / (1 + e.eficiency)), 0) AS load
       FROM tasks t
       JOIN engineers e ON t.engineer_id = e.id
-      WHERE t.engineer_id = $1 AND t.status IN ('Pendente', 'Em andamento')
+      WHERE t.engineer_id = $1 AND t.status IN ('Pendente', 'Em Andamento')
     `,
       [engineerId],
     );

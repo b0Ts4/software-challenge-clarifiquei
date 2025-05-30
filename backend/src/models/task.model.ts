@@ -1,5 +1,3 @@
-import { Engineer } from './engineer.model';
-
 export interface Task {
   id: number;
   name: string;
@@ -20,4 +18,14 @@ export enum TaskStatus {
   pendente = 'Pendente',
   em_andamento = 'Em Andamento',
   concluida = 'Concluida',
+}
+
+export interface UpdateTaskDto {
+  id?: number;
+  name?: string;
+  priority?: TaskPriority;
+  hours?: number;
+  engineer_id?: number;
+  started_at?: Date;
+  status?: TaskStatus;
 }

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
-import { Engineer } from 'src/models/engineer.model';
+import { Engineer, UpdateEngineerDto } from 'src/models/engineer.model';
 
 @Injectable()
 export class EngineersService {
@@ -67,16 +67,39 @@ export class EngineersService {
     return rows[0];
   }
 
-  async update(id: number, engineer: Engineer): Promise<Engineer | null> {
-    const { name, max_hours, eficiency: eficiency } = engineer;
-    const { rows } = await this.pool.query(
-      'UPDATE engineers SET name = $1, max_hours = $2, eficiency = $3 WHERE id = $4 RETURNING *',
-      [name, max_hours, eficiency, id],
-    );
+  async update(
+    id: number,
+    engineer: UpdateEngineerDto,
+  ): Promise<Engineer | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let index = 1;
+
+    for (const [key, value] of Object.entries(engineer)) {
+      fields.push(`${key} = $${index}`);
+      values.push(value);
+      index++;
+    }
+
+    values.push(id); // o último é sempre o id para o WHERE
+
+    const query = `
+    UPDATE engineers
+    SET ${fields.join(', ')}
+    WHERE id = $${index}
+    RETURNING *;
+  `;
+
+    const { rows } = await this.pool.query(query, values);
     return rows[0] || null;
   }
 
   async delete(id: number): Promise<void> {
+    await this.pool.query(
+      'UPDATE tasks SET engineer_id = NULL WHERE engineer_id = $1',
+      [id],
+    );
+
     await this.pool.query('DELETE FROM engineers WHERE id = $1', [id]);
   }
 }

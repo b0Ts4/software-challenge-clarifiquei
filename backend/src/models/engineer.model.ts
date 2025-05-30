@@ -7,3 +7,10 @@ export interface Engineer {
   eficiency?: number;
   tasks: Task[];
 }
+
+export interface UpdateEngineerDto {
+  id?: number;
+  name?: string;
+  max_hours?: number;
+  eficiency?: number;
+}

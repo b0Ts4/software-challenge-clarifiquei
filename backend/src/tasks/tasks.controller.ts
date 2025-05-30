@@ -8,7 +8,7 @@ import {
   Put,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
-import { Task } from 'src/models/task.model';
+import { Task, UpdateTaskDto } from 'src/models/task.model';
 
 @Controller('tasks')
 export class TasksController {
@@ -31,7 +31,7 @@ export class TasksController {
   @Put(':id')
   async updateTask(
     @Param('id') id: number,
-    @Body() task: Task,
+    @Body() task: UpdateTaskDto,
   ): Promise<Task | null> {
     return this.tasksService.update(id, task);
   }
